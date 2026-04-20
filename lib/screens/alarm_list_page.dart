@@ -126,6 +126,32 @@ class _AlarmListPageState extends State<AlarmListPage> {
     });
   }
 
+  Future<void> _confirmDeleteAlarm(Alarm alarm) async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Supprimer cette alarme ?'),
+          content: Text('L alarme ${alarm.formattedTime} sera supprimee.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await _deleteAlarm(alarm.id);
+    }
+  }
+
   Future<void> _syncNative(List<Alarm> alarms) async {
     try {
       await _platformBridge.syncAlarms(alarms);
@@ -210,7 +236,7 @@ class _AlarmListPageState extends State<AlarmListPage> {
                                 child: _AlarmCard(
                                   alarm: alarm,
                                   onToggle: (bool value) => _toggleAlarm(alarm, value),
-                                  onDelete: () => _deleteAlarm(alarm.id),
+                                  onDelete: () => _confirmDeleteAlarm(alarm),
                                 ),
                               );
                             },
@@ -286,6 +312,13 @@ class _AlarmCard extends StatelessWidget {
             activeThumbColor: const Color(0xFFD7A6FF),
             inactiveThumbColor: const Color(0xFF6E6E6E),
             inactiveTrackColor: const Color(0xFF4A4458),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline_rounded),
+            color: const Color(0xFFD7A6FF),
+            tooltip: 'Supprimer l alarme',
           ),
         ],
       ),
