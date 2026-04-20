@@ -259,7 +259,7 @@ class _AlarmCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _getDifficultyColor(context).withOpacity(0.2),
+                          color: _getDifficultyColor(context).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -366,7 +366,7 @@ class _CreateAlarmDialogState extends State<_CreateAlarmDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<ChallengeType>(
-              value: _challengeType,
+              initialValue: _challengeType,
               decoration: InputDecoration(
                 labelText: 'Type de défi',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -388,7 +388,7 @@ class _CreateAlarmDialogState extends State<_CreateAlarmDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<AlarmDifficulty>(
-              value: _difficulty,
+              initialValue: _difficulty,
               decoration: InputDecoration(
                 labelText: 'Difficulté',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
