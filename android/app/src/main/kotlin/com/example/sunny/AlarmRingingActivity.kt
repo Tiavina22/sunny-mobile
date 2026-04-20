@@ -50,6 +50,8 @@ class AlarmRingingActivity : Activity() {
     private lateinit var difficulty: String
 
     private var photoCaptured = false
+    private var challengeCompleted = false
+    private var allowTemporaryBackground = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,6 +119,21 @@ class AlarmRingingActivity : Activity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         // Keep the ringing screen active until challenge flow resolves.
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (!challengeCompleted && !allowTemporaryBackground) {
+            Toast.makeText(this, "Complete the challenge to stop the alarm.", Toast.LENGTH_SHORT).show()
+            relaunchSelfIfNeeded()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!challengeCompleted && !allowTemporaryBackground && !isFinishing) {
+            relaunchSelfIfNeeded()
+        }
     }
 
     override fun onDestroy() {
@@ -254,12 +271,14 @@ class AlarmRingingActivity : Activity() {
             Toast.makeText(this, "No camera app found.", Toast.LENGTH_SHORT).show()
             return
         }
+        allowTemporaryBackground = true
         startActivityForResult(captureIntent, requestCapturePhoto)
     }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        allowTemporaryBackground = false
 
         if (requestCode == requestCapturePhoto && resultCode == RESULT_OK) {
             photoCaptured = true
@@ -280,7 +299,19 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun completeChallenge() {
+        challengeCompleted = true
         stopAlertSignals()
         finish()
+    }
+
+    private fun relaunchSelfIfNeeded() {
+        val relaunchIntent = Intent(this, AlarmRingingActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("challengeType", challengeType)
+            putExtra("difficulty", difficulty)
+        }
+        startActivity(relaunchIntent)
     }
 }
