@@ -1,12 +1,18 @@
 package com.example.sunny
 
 import android.app.Activity
+import android.content.Intent
 import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.provider.MediaStore
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.Button
@@ -16,10 +22,23 @@ import android.widget.Toast
 import kotlin.random.Random
 
 class AlarmRingingActivity : Activity() {
-    private val ringtone by lazy {
-        RingtoneManager.getRingtone(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+    companion object {
+        private const val requestCapturePhoto = 1001
     }
+
+    private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private val volumeHandler = Handler(Looper.getMainLooper())
+    private var currentVolume = 0.15f
+    private val volumeStepRunnable = object : Runnable {
+        override fun run() {
+            currentVolume = (currentVolume + 0.1f).coerceAtMost(1.0f)
+            mediaPlayer?.setVolume(currentVolume, currentVolume)
+            if (currentVolume < 1.0f) {
+                volumeHandler.postDelayed(this, 4000)
+            }
+        }
+    }
 
     private var expectedAnswer: Int = 0
 
@@ -29,6 +48,8 @@ class AlarmRingingActivity : Activity() {
 
     private lateinit var challengeType: String
     private lateinit var difficulty: String
+
+    private var photoCaptured = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,11 +125,28 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun startAlertSignals() {
-        ringtone.audioAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        ringtone.play()
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(this@AlarmRingingActivity, alarmUri)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                isLooping = true
+                prepare()
+                setVolume(currentVolume, currentVolume)
+                start()
+            }
+
+            volumeHandler.postDelayed(volumeStepRunnable, 4000)
+        } catch (error: Exception) {
+            Toast.makeText(this, "Unable to start alarm sound.", Toast.LENGTH_SHORT).show()
+        }
 
         vibrator = getSystemService(Vibrator::class.java)
         val pattern = longArrayOf(0, 700, 400)
@@ -121,25 +159,50 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun stopAlertSignals() {
-        if (ringtone.isPlaying) {
-            ringtone.stop()
+        volumeHandler.removeCallbacks(volumeStepRunnable)
+
+        mediaPlayer?.let { player ->
+            if (player.isPlaying) {
+                player.stop()
+            }
+            player.release()
         }
+        mediaPlayer = null
+
         vibrator?.cancel()
     }
 
     private fun configureChallengeUi() {
-        if (challengeType != "math") {
-            challengeTextView.text = "This challenge is not implemented yet."
-            answerInput.hint = "Tap validate to stop (temporary)"
-            validateButton.text = "Stop"
-            validateButton.setOnClickListener {
-                stopAlertSignals()
-                finish()
+        when (challengeType) {
+            "math" -> {
+                answerInput.visibility = View.VISIBLE
+                validateButton.text = "Validate"
+                validateButton.setOnClickListener { validateMathAnswer() }
+                generateMathChallenge()
             }
-            return
-        }
 
-        generateMathChallenge()
+            "photo" -> {
+                answerInput.visibility = View.GONE
+                challengeTextView.text = "Take a photo to stop the alarm."
+                validateButton.text = "Take photo"
+                validateButton.setOnClickListener { launchCamera() }
+            }
+
+            "quote" -> {
+                answerInput.visibility = View.GONE
+                challengeTextView.text = randomQuote()
+                validateButton.text = "I have read"
+                validateButton.setOnClickListener { completeChallenge() }
+            }
+
+            else -> {
+                // Unknown challenge types fallback to math so alarm cannot be dismissed trivially.
+                answerInput.visibility = View.VISIBLE
+                validateButton.text = "Validate"
+                validateButton.setOnClickListener { validateMathAnswer() }
+                generateMathChallenge()
+            }
+        }
     }
 
     private fun generateMathChallenge() {
@@ -174,21 +237,50 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun validateMathAnswer() {
-        if (challengeType != "math") {
-            stopAlertSignals()
-            finish()
-            return
-        }
-
         val userAnswer = answerInput.text.toString().trim().toIntOrNull()
         if (userAnswer == expectedAnswer) {
-            stopAlertSignals()
-            finish()
+            completeChallenge()
             return
         }
 
         Toast.makeText(this, "Wrong answer. Try again.", Toast.LENGTH_SHORT).show()
         answerInput.text?.clear()
         generateMathChallenge()
+    }
+
+    private fun launchCamera() {
+        val captureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        if (captureIntent.resolveActivity(packageManager) == null) {
+            Toast.makeText(this, "No camera app found.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivityForResult(captureIntent, requestCapturePhoto)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == requestCapturePhoto && resultCode == RESULT_OK) {
+            photoCaptured = true
+            if (photoCaptured) {
+                completeChallenge()
+            }
+        }
+    }
+
+    private fun randomQuote(): String {
+        val quotes = listOf(
+            "Rise up and keep moving. Small steps count.",
+            "Today is a gift. Use it with purpose.",
+            "Discipline beats motivation when the alarm rings.",
+            "Start strong. Your future self will thank you.",
+        )
+        return quotes.random()
+    }
+
+    private fun completeChallenge() {
+        stopAlertSignals()
+        finish()
     }
 }
