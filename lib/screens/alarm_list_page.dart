@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -18,12 +20,43 @@ class _AlarmListPageState extends State<AlarmListPage> {
 
   bool _isLoading = true;
   List<Alarm> _alarms = <Alarm>[];
+  DateTime _now = DateTime.now();
+  Timer? _clockTimer;
 
   @override
   void initState() {
     super.initState();
     _loadAlarms();
+    _startClock();
   }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startClock() {
+    _clockTimer = Timer.periodic(const Duration(seconds: 30), (Timer timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _now = DateTime.now();
+      });
+    });
+  }
+
+  bool get _isDayTime => _now.hour >= 6 && _now.hour < 18;
+
+  String get _liveTime {
+    final String h = _now.hour.toString().padLeft(2, '0');
+    final String m = _now.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  String get _periodLabel => _isDayTime ? 'Day Mode' : 'Night Mode';
 
   Future<void> _loadAlarms() async {
     final List<Alarm> alarms = await _repository.loadAlarms();
@@ -121,52 +154,10 @@ class _AlarmListPageState extends State<AlarmListPage> {
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.all(24),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: <Color>[Color(0xFFFFBB5C), Color(0xFFFEAD08)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: const Color(0xFFFEAD08).withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Text(
-                        '🌙',
-                        style: TextStyle(fontSize: 32),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Sleep Time',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'Alarms',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFFD7A6FF),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                child: _LiveDayNightCard(
+                  isDayTime: _isDayTime,
+                  liveTime: _liveTime,
+                  periodLabel: _periodLabel,
                 ),
               ),
               Expanded(
@@ -292,9 +283,112 @@ class _AlarmCard extends StatelessWidget {
           Switch(
             value: alarm.enabled,
             onChanged: onToggle,
-            activeColor: const Color(0xFFD7A6FF),
+            activeThumbColor: const Color(0xFFD7A6FF),
             inactiveThumbColor: const Color(0xFF6E6E6E),
             inactiveTrackColor: const Color(0xFF4A4458),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveDayNightCard extends StatelessWidget {
+  const _LiveDayNightCard({
+    required this.isDayTime,
+    required this.liveTime,
+    required this.periodLabel,
+  });
+
+  final bool isDayTime;
+  final String liveTime;
+  final String periodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Color> colors = isDayTime
+        ? <Color>[const Color(0xFFFFBB5C), const Color(0xFFFF8A5B)]
+        : <Color>[const Color(0xFF5F5B8B), const Color(0xFF2A2343)];
+
+    final IconData icon = isDayTime ? Icons.wb_sunny_rounded : Icons.nightlight_round;
+
+    final String subtitle = isDayTime
+        ? 'Le mode jour est actif maintenant'
+        : 'Le mode nuit est actif maintenant';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: colors.last.withValues(alpha: 0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(icon, color: Colors.white, size: 32),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  periodLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              const Text(
+                'Live',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                liveTime,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
         ],
       ),

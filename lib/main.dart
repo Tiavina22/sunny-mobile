@@ -27,7 +27,6 @@ class MainApp extends StatelessWidget {
           primary: Color(0xFFD7A6FF),
           secondary: Color(0xFFFFBB5C),
           surface: Color(0xFF3D3551),
-          background: Color(0xFF2E283F),
         ),
         cardTheme: const CardThemeData(
           color: Color(0xFF3D3551),
