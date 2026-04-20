@@ -51,48 +51,107 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Historique'),
-        actions: <Widget>[
-          IconButton(
-            onPressed: _entries.isEmpty ? null : _clearHistory,
-            icon: const Icon(Icons.delete_sweep_outlined),
-            tooltip: 'Vider l historique',
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              Color(0xFF2E283F),
+              Color(0xFF3D3551),
+            ],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _entries.isEmpty
-              ? const Center(child: Text('Aucun historique pour le moment.'))
-              : RefreshIndicator(
-                  onRefresh: _loadHistory,
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: _entries.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final AlarmHistoryEntry entry = _entries[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            'Defi ${entry.challengeType} - ${entry.statusLabel}',
-                          ),
-                          subtitle: Text(
-                            'Debut: ${_formatDateTime(entry.startedAt)}\n'
-                            'Duree: ${entry.durationSeconds}s | '
-                            'Action: ${entry.actionTaken ? 'oui' : 'non'} | '
-                            'Erreurs: ${entry.wrongAttempts}',
-                          ),
-                          isThreeLine: true,
-                        ),
-                      );
-                    },
-                  ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: <Widget>[
+                    const Text(
+                      'Historique',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_entries.isNotEmpty)
+                      IconButton(
+                        onPressed: _clearHistory,
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        color: const Color(0xFFD7A6FF),
+                      ),
+                  ],
                 ),
+              ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _entries.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Aucun historique',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Color(0xFF9E9E9E),
+                              ),
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadHistory,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: _entries.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final AlarmHistoryEntry entry = _entries[index];
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3D3551),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        'Défi ${entry.challengeType} - ${entry.statusLabel}',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Début: ${_formatDateTime(entry.startedAt)}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF9E9E9E),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Durée: ${entry.durationSeconds}s | Erreurs: ${entry.wrongAttempts}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF9E9E9E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
