@@ -31,6 +31,15 @@ class MainActivity : FlutterActivity() {
 						result.success(null)
 					}
 
+					"getAlarmHistory" -> {
+						result.success(AlarmHistoryStore.listEntries(this))
+					}
+
+					"clearAlarmHistory" -> {
+						AlarmHistoryStore.clear(this)
+						result.success(null)
+					}
+
 					else -> result.notImplemented()
 				}
 			}

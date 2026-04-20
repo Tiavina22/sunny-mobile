@@ -23,6 +23,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import kotlin.random.Random
+import java.util.UUID
+import kotlin.math.max
 
 class AlarmRingingActivity : Activity() {
     companion object {
@@ -55,10 +57,16 @@ class AlarmRingingActivity : Activity() {
 
     private lateinit var challengeType: String
     private lateinit var difficulty: String
+    private lateinit var alarmId: String
+    private lateinit var sessionId: String
+    private var startedAtMillis: Long = 0L
 
     private var photoCaptured = false
     private var challengeCompleted = false
     private var allowTemporaryBackground = false
+    private var wrongAttempts = 0
+    private var actionTaken = false
+    private var isRelaunching = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,6 +85,12 @@ class AlarmRingingActivity : Activity() {
 
         challengeType = intent.getStringExtra("challengeType") ?: "math"
         difficulty = intent.getStringExtra("difficulty") ?: "easy"
+        alarmId = intent.getStringExtra("alarmId") ?: "unknown"
+        startedAtMillis = intent.getLongExtra("startedAtMillis", System.currentTimeMillis())
+        sessionId = intent.getStringExtra("sessionId")
+            ?: "${alarmId}_${startedAtMillis}_${UUID.randomUUID()}"
+        wrongAttempts = intent.getIntExtra("wrongAttempts", 0)
+        actionTaken = intent.getBooleanExtra("actionTaken", false)
 
         title = "Alarm"
 
@@ -144,6 +158,9 @@ class AlarmRingingActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (!challengeCompleted && !isRelaunching) {
+            saveHistory(status = "abandoned")
+        }
         stopAlertSignals()
         super.onDestroy()
     }
@@ -219,7 +236,10 @@ class AlarmRingingActivity : Activity() {
                 answerInput.visibility = View.GONE
                 challengeTextView.text = randomQuote()
                 validateButton.text = "I have read"
-                validateButton.setOnClickListener { completeChallenge() }
+                validateButton.setOnClickListener {
+                    actionTaken = true
+                    completeChallenge()
+                }
             }
 
             else -> {
@@ -264,18 +284,21 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun validateMathAnswer() {
+        actionTaken = true
         val userAnswer = answerInput.text.toString().trim().toIntOrNull()
         if (userAnswer == expectedAnswer) {
             completeChallenge()
             return
         }
 
+        wrongAttempts += 1
         Toast.makeText(this, "Wrong answer. Try again.", Toast.LENGTH_SHORT).show()
         answerInput.text?.clear()
         generateMathChallenge()
     }
 
     private fun launchCamera() {
+        actionTaken = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
             checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -343,6 +366,7 @@ class AlarmRingingActivity : Activity() {
 
     private fun completeChallenge() {
         challengeCompleted = true
+        saveHistory(status = "success")
         stopAlertSignals()
         finish()
     }
@@ -377,13 +401,40 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun relaunchSelfIfNeeded() {
+        isRelaunching = true
         val relaunchIntent = Intent(this, AlarmRingingActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("alarmId", alarmId)
             putExtra("challengeType", challengeType)
             putExtra("difficulty", difficulty)
+            putExtra("startedAtMillis", startedAtMillis)
+            putExtra("sessionId", sessionId)
+            putExtra("wrongAttempts", wrongAttempts)
+            putExtra("actionTaken", actionTaken)
         }
         startActivity(relaunchIntent)
+    }
+
+    private fun saveHistory(status: String) {
+        val endedAtMillis = System.currentTimeMillis()
+        val durationSeconds = max(1L, (endedAtMillis - startedAtMillis) / 1000L)
+
+        AlarmHistoryStore.addEntry(
+            this,
+            AlarmHistoryEntry(
+                id = sessionId,
+                alarmId = alarmId,
+                challengeType = challengeType,
+                difficulty = difficulty,
+                startedAtMillis = startedAtMillis,
+                endedAtMillis = endedAtMillis,
+                durationSeconds = durationSeconds,
+                status = status,
+                actionTaken = actionTaken,
+                wrongAttempts = wrongAttempts,
+            ),
+        )
     }
 }

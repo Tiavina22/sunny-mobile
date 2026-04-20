@@ -3,6 +3,7 @@ package com.example.sunny
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import java.util.UUID
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -17,6 +18,8 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra("alarmId", intent.getStringExtra("alarmId"))
             putExtra("challengeType", intent.getStringExtra("challengeType"))
             putExtra("difficulty", intent.getStringExtra("difficulty"))
+            putExtra("startedAtMillis", System.currentTimeMillis())
+            putExtra("sessionId", UUID.randomUUID().toString())
         }
         context.startActivity(ringIntent)
     }

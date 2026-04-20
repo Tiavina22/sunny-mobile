@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/alarm_list_page.dart';
+import 'app.dart';
 
 void main() {
   runApp(const MainApp());
@@ -24,7 +24,7 @@ class MainApp extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       ),
-      home: const AlarmListPage(),
+      home: const AppShell(),
     );
   }
 }
