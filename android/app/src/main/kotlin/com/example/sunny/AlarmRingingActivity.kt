@@ -1,7 +1,10 @@
 package com.example.sunny
 
 import android.app.Activity
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.Intent
+import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -24,10 +27,14 @@ import kotlin.random.Random
 class AlarmRingingActivity : Activity() {
     companion object {
         private const val requestCapturePhoto = 1001
+        private const val requestCameraPermission = 1002
     }
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var audioManager: AudioManager? = null
+    private var previousAlarmVolume: Int? = null
+    private var previousRingerMode: Int? = null
     private val volumeHandler = Handler(Looper.getMainLooper())
     private var currentVolume = 0.15f
     private val volumeStepRunnable = object : Runnable {
@@ -142,6 +149,8 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun startAlertSignals() {
+        prepareAlarmAudioEnvironment()
+
         val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
@@ -187,6 +196,7 @@ class AlarmRingingActivity : Activity() {
         mediaPlayer = null
 
         vibrator?.cancel()
+        restoreAudioEnvironment()
     }
 
     private fun configureChallengeUi() {
@@ -266,6 +276,17 @@ class AlarmRingingActivity : Activity() {
     }
 
     private fun launchCamera() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), requestCameraPermission)
+            return
+        }
+
+        openCameraIntent()
+    }
+
+    private fun openCameraIntent() {
         val captureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         if (captureIntent.resolveActivity(packageManager) == null) {
             Toast.makeText(this, "No camera app found.", Toast.LENGTH_SHORT).show()
@@ -288,6 +309,28 @@ class AlarmRingingActivity : Activity() {
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == requestCameraPermission) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            if (granted) {
+                openCameraIntent()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Camera permission is required for photo challenge.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
     private fun randomQuote(): String {
         val quotes = listOf(
             "Rise up and keep moving. Small steps count.",
@@ -302,6 +345,35 @@ class AlarmRingingActivity : Activity() {
         challengeCompleted = true
         stopAlertSignals()
         finish()
+    }
+
+    private fun prepareAlarmAudioEnvironment() {
+        audioManager = getSystemService(AudioManager::class.java)
+        val manager = audioManager ?: return
+
+        previousAlarmVolume = manager.getStreamVolume(AudioManager.STREAM_ALARM)
+        previousRingerMode = manager.ringerMode
+
+        if (manager.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+            manager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+        }
+
+        val maxVolume = manager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+        val targetVolume = (maxVolume * 0.5f).toInt().coerceAtLeast(1)
+        if ((previousAlarmVolume ?: 0) < targetVolume) {
+            manager.setStreamVolume(AudioManager.STREAM_ALARM, targetVolume, 0)
+        }
+    }
+
+    private fun restoreAudioEnvironment() {
+        val manager = audioManager ?: return
+
+        previousAlarmVolume?.let { previous ->
+            manager.setStreamVolume(AudioManager.STREAM_ALARM, previous, 0)
+        }
+        previousRingerMode?.let { previous ->
+            manager.ringerMode = previous
+        }
     }
 
     private fun relaunchSelfIfNeeded() {

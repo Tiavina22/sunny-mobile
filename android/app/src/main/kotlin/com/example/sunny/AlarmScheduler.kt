@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDateTime
@@ -60,11 +61,23 @@ object AlarmScheduler {
             difficulty = alarm.difficulty,
         ) ?: return
 
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            triggerAtMillis,
-            pendingIntent,
-        )
+        val canUseExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            alarmManager.canScheduleExactAlarms()
+
+        if (canUseExact) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerAtMillis,
+                pendingIntent,
+            )
+        } else {
+            // Fallback keeps alarm functional when exact-alarm permission is not granted.
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerAtMillis,
+                pendingIntent,
+            )
+        }
     }
 
     private fun buildPendingIntent(
