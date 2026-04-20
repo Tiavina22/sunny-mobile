@@ -423,164 +423,177 @@ class _CreateAlarmDialogState extends State<_CreateAlarmDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final Size screenSize = MediaQuery.sizeOf(context);
+    final bool isCompact = screenSize.height < 780;
+    final double outerPadding = isCompact ? 20 : 32;
+    final double spacingLarge = isCompact ? 20 : 32;
+    final double timeBubblePadding = isCompact ? 26 : 40;
+    final double timeFontSize = isCompact ? 40 : 48;
+
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       backgroundColor: const Color(0xFF3D3551),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Text(
-              'Sleep Time',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 32),
-            GestureDetector(
-              onTap: _pickTime,
-              child: Container(
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: <Color>[Color(0xFFD7A6FF), Color(0xFFB88FE8)],
-                  ),
-                  borderRadius: BorderRadius.circular(150),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: const Color(0xFFD7A6FF).withValues(alpha: 0.4),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: <Widget>[
-                    Text(
-                      _selectedTime.format(context),
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Icon(
-                      Icons.access_time,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E283F),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: DropdownButton<ChallengeType>(
-                value: _challengeType,
-                isExpanded: true,
-                underline: const SizedBox(),
-                dropdownColor: const Color(0xFF2E283F),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                items: ChallengeType.values
-                    .map(
-                      (ChallengeType value) => DropdownMenuItem<ChallengeType>(
-                        value: value,
-                        child: Text(value.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (ChallengeType? value) {
-                  if (value != null) {
-                    setState(() => _challengeType = value);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E283F),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: DropdownButton<AlarmDifficulty>(
-                value: _difficulty,
-                isExpanded: true,
-                underline: const SizedBox(),
-                dropdownColor: const Color(0xFF2E283F),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                items: AlarmDifficulty.values
-                    .map(
-                      (AlarmDifficulty value) => DropdownMenuItem<AlarmDifficulty>(
-                        value: value,
-                        child: Text(value.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (AlarmDifficulty? value) {
-                  if (value != null) {
-                    setState(() => _difficulty = value);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: screenSize.height * 0.82),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(outerPadding),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: const Color(0xFF2E283F),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                Text(
+                  'Sleep Time',
+                  style: TextStyle(
+                    fontSize: isCompact ? 22 : 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: spacingLarge),
+                GestureDetector(
+                  onTap: _pickTime,
+                  child: Container(
+                    padding: EdgeInsets.all(timeBubblePadding),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFFD7A6FF), Color(0xFFB88FE8)],
                       ),
+                      borderRadius: BorderRadius.circular(150),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: const Color(0xFFD7A6FF).withValues(alpha: 0.4),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      'Annuler',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    child: Column(
+                      children: <Widget>[
+                        Text(
+                          _selectedTime.format(context),
+                          style: TextStyle(
+                            fontSize: timeFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: isCompact ? 6 : 8),
+                        Icon(
+                          Icons.access_time,
+                          color: Colors.white,
+                          size: isCompact ? 28 : 32,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(
-                        _CreateAlarmResult(
-                          time: _selectedTime,
-                          challengeType: _challengeType,
-                          difficulty: _difficulty,
-                        ),
-                      );
+                SizedBox(height: spacingLarge),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E283F),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: DropdownButton<ChallengeType>(
+                    value: _challengeType,
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    dropdownColor: const Color(0xFF2E283F),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    items: ChallengeType.values
+                        .map(
+                          (ChallengeType value) => DropdownMenuItem<ChallengeType>(
+                            value: value,
+                            child: Text(value.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (ChallengeType? value) {
+                      if (value != null) {
+                        setState(() => _challengeType = value);
+                      }
                     },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: const Color(0xFFD7A6FF),
-                      foregroundColor: const Color(0xFF2E283F),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E283F),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: DropdownButton<AlarmDifficulty>(
+                    value: _difficulty,
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    dropdownColor: const Color(0xFF2E283F),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    items: AlarmDifficulty.values
+                        .map(
+                          (AlarmDifficulty value) => DropdownMenuItem<AlarmDifficulty>(
+                            value: value,
+                            child: Text(value.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (AlarmDifficulty? value) {
+                      if (value != null) {
+                        setState(() => _difficulty = value);
+                      }
+                    },
+                  ),
+                ),
+                SizedBox(height: spacingLarge),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: const Color(0xFF2E283F),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'Annuler',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      'Done',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(
+                            _CreateAlarmResult(
+                              time: _selectedTime,
+                              challengeType: _challengeType,
+                              difficulty: _difficulty,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: const Color(0xFFD7A6FF),
+                          foregroundColor: const Color(0xFF2E283F),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

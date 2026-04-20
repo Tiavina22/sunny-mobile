@@ -4,6 +4,9 @@ import android.app.Activity
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -15,11 +18,16 @@ import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.text.InputType
+import android.view.Gravity
 import android.view.View
+import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.EditText
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import kotlin.random.Random
@@ -71,6 +79,8 @@ class AlarmRingingActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        configureStatusBarAppearance()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -94,47 +104,25 @@ class AlarmRingingActivity : Activity() {
 
         title = "Alarm"
 
-        challengeTextView = TextView(this).apply {
-            textSize = 22f
-        }
-        answerInput = EditText(this).apply {
-            textSize = 22f
-            hint = "Enter result"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-                android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
-        }
-        validateButton = Button(this).apply {
-            text = "Validate"
-            setOnClickListener { validateMathAnswer() }
-        }
-
-        setContentView(
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(48, 120, 48, 48)
-
-                addView(
-                    TextView(context).apply {
-                        textSize = 30f
-                        text = "Wake up"
-                    },
-                )
-
-                addView(
-                    TextView(context).apply {
-                        textSize = 18f
-                        text = "Challenge: $challengeType | Difficulty: $difficulty"
-                    },
-                )
-
-                addView(challengeTextView)
-                addView(answerInput)
-                addView(validateButton)
-            },
-        )
+        setContentView(buildModernContentView())
 
         configureChallengeUi()
         startAlertSignals()
+    }
+
+    private fun configureStatusBarAppearance() {
+        window.statusBarColor = Color.parseColor("#2E283F")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.setSystemBarsAppearance(
+                0,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility =
+                window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -216,26 +204,341 @@ class AlarmRingingActivity : Activity() {
         restoreAudioEnvironment()
     }
 
+    private fun buildModernContentView(): View {
+        val root = FrameLayout(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    Color.parseColor("#2E283F"),
+                    Color.parseColor("#3D3551"),
+                ),
+            )
+        }
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dp(), 40.dp(), 24.dp(), 24.dp())
+        }
+
+        content.addView(buildWakeUpHeader())
+        content.addView(buildHeaderCard())
+
+        content.addView(
+            buildInfoCard(
+                title = "Challenge",
+                message = "Type: $challengeType   |   Difficulty: $difficulty",
+            ).apply {
+                (layoutParams as LinearLayout.LayoutParams).topMargin = 20.dp()
+            },
+        )
+
+        challengeTextView = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 32f
+            setTypeface(typeface, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setLineSpacing(0f, 1.3f)
+        }
+
+        answerInput = EditText(this).apply {
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.parseColor("#9E9E9E"))
+            textSize = 24f
+            hint = "Votre réponse"
+            gravity = Gravity.CENTER
+            setTypeface(typeface, Typeface.BOLD)
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
+            background = GradientDrawable().apply {
+                cornerRadius = 20.dp().toFloat()
+                setColor(Color.parseColor("#3D3551"))
+                setStroke(2.dp(), Color.parseColor("#D7A6FF"))
+            }
+            setPadding(20.dp(), 20.dp(), 20.dp(), 20.dp())
+        }
+
+        validateButton = Button(this).apply {
+            text = "Valider"
+            setTextColor(Color.parseColor("#2E283F"))
+            textSize = 18f
+            setTypeface(typeface, Typeface.BOLD)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(
+                    Color.parseColor("#D7A6FF"),
+                    Color.parseColor("#B88FE8"),
+                ),
+            ).apply {
+                cornerRadius = 24.dp().toFloat()
+            }
+            minimumHeight = 64.dp()
+            elevation = 8.dp().toFloat()
+            setOnClickListener { validateMathAnswer() }
+        }
+
+        val challengeCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#3D3551"))
+                cornerRadius = 32.dp().toFloat()
+            }
+            setPadding(28.dp(), 28.dp(), 28.dp(), 28.dp())
+            elevation = 8.dp().toFloat()
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = 20.dp()
+            }
+        }
+
+        challengeCard.addView(
+            TextView(this).apply {
+                text = "⏰ Complétez le défi pour arrêter l'alarme"
+                setTextColor(Color.parseColor("#D7A6FF"))
+                textSize = 14f
+                setTypeface(typeface, Typeface.BOLD)
+                gravity = Gravity.CENTER_HORIZONTAL
+            },
+        )
+
+        challengeCard.addView(
+            challengeTextView.apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = 24.dp()
+                    bottomMargin = 24.dp()
+                }
+            },
+        )
+
+        challengeCard.addView(answerInput)
+
+        challengeCard.addView(
+            validateButton.apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = 20.dp()
+                }
+            },
+        )
+
+        content.addView(challengeCard)
+
+        content.addView(
+            TextView(this).apply {
+                text = "🔔 L'alarme continue jusqu'à la fin du défi"
+                setTextColor(Color.parseColor("#9E9E9E"))
+                textSize = 13f
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = 16.dp()
+                }
+            },
+        )
+
+        scroll.addView(content)
+        root.addView(scroll)
+        return root
+    }
+
+    private fun buildWakeUpHeader(): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                bottomMargin = 32.dp()
+            }
+
+            addView(
+                TextView(context).apply {
+                    text = "🌙"
+                    textSize = 64f
+                    gravity = Gravity.CENTER
+                },
+            )
+
+            addView(
+                TextView(context).apply {
+                    text = "Réveillez-vous!"
+                    setTextColor(Color.WHITE)
+                    textSize = 36f
+                    setTypeface(typeface, Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        topMargin = 16.dp()
+                    }
+                },
+            )
+
+            addView(
+                TextView(context).apply {
+                    text = "Il est temps de se lever"
+                    setTextColor(Color.parseColor("#D7A6FF"))
+                    textSize = 16f
+                    gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        topMargin = 8.dp()
+                    }
+                },
+            )
+        }
+    }
+
+    private fun buildHeaderCard(): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#3D3551"))
+                cornerRadius = 24.dp().toFloat()
+            }
+            setPadding(20.dp(), 20.dp(), 20.dp(), 20.dp())
+            elevation = 4.dp().toFloat()
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+
+            addView(
+                TextView(context).apply {
+                    text = "⏰"
+                    textSize = 40f
+                    background = GradientDrawable(
+                        GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(
+                            Color.parseColor("#FEAD08"),
+                            Color.parseColor("#FFBB5C"),
+                        ),
+                    ).apply {
+                        cornerRadius = 16.dp().toFloat()
+                    }
+                    setPadding(16.dp(), 12.dp(), 16.dp(), 12.dp())
+                },
+            )
+
+            addView(
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f,
+                    ).apply {
+                        leftMargin = 16.dp()
+                    }
+
+                    addView(
+                        TextView(context).apply {
+                            text = "Défi du réveil"
+                            setTextColor(Color.WHITE)
+                            textSize = 20f
+                            setTypeface(typeface, Typeface.BOLD)
+                        },
+                    )
+
+                    addView(
+                        TextView(context).apply {
+                            text = "ID: $alarmId"
+                            setTextColor(Color.parseColor("#9E9E9E"))
+                            textSize = 12f
+                            layoutParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                            ).apply {
+                                topMargin = 4.dp()
+                            }
+                        },
+                    )
+                },
+            )
+        }
+    }
+
+    private fun buildInfoCard(title: String, message: String): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#3D3551"))
+                cornerRadius = 20.dp().toFloat()
+            }
+            setPadding(20.dp(), 16.dp(), 20.dp(), 16.dp())
+            elevation = 2.dp().toFloat()
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+
+            addView(
+                TextView(context).apply {
+                    text = title
+                    textSize = 12f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.parseColor("#D7A6FF"))
+                },
+            )
+
+            addView(
+                TextView(context).apply {
+                    text = message
+                    textSize = 16f
+                    setTextColor(Color.WHITE)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        topMargin = 4.dp()
+                    }
+                },
+            )
+        }
+    }
+
+    private fun Int.dp(): Int {
+        return (this * resources.displayMetrics.density).toInt()
+    }
+
     private fun configureChallengeUi() {
         when (challengeType) {
             "math" -> {
                 answerInput.visibility = View.VISIBLE
-                validateButton.text = "Validate"
+                answerInput.hint = "Votre réponse"
+                answerInput.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
+                validateButton.text = "Valider la réponse"
                 validateButton.setOnClickListener { validateMathAnswer() }
                 generateMathChallenge()
             }
 
             "photo" -> {
                 answerInput.visibility = View.GONE
-                challengeTextView.text = "Take a photo to stop the alarm."
-                validateButton.text = "Take photo"
+                challengeTextView.text = "📸 Prenez une photo pour prouver que vous êtes réveillé"
+                validateButton.text = "Ouvrir l'appareil photo"
                 validateButton.setOnClickListener { launchCamera() }
             }
 
             "quote" -> {
                 answerInput.visibility = View.GONE
                 challengeTextView.text = randomQuote()
-                validateButton.text = "I have read"
+                validateButton.text = "J'ai lu et compris"
                 validateButton.setOnClickListener {
                     actionTaken = true
                     completeChallenge()
@@ -245,7 +548,7 @@ class AlarmRingingActivity : Activity() {
             else -> {
                 // Unknown challenge types fallback to math so alarm cannot be dismissed trivially.
                 answerInput.visibility = View.VISIBLE
-                validateButton.text = "Validate"
+                validateButton.text = "Valider"
                 validateButton.setOnClickListener { validateMathAnswer() }
                 generateMathChallenge()
             }
@@ -276,10 +579,10 @@ class AlarmRingingActivity : Activity() {
 
         if (useAddition) {
             expectedAnswer = a + b
-            challengeTextView.text = "Solve: $a + $b"
+            challengeTextView.text = "$a + $b = ?"
         } else {
             expectedAnswer = a * b
-            challengeTextView.text = "Solve: $a x $b"
+            challengeTextView.text = "$a × $b = ?"
         }
     }
 
@@ -292,7 +595,7 @@ class AlarmRingingActivity : Activity() {
         }
 
         wrongAttempts += 1
-        Toast.makeText(this, "Wrong answer. Try again.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "❌ Mauvaise réponse. Réessayez!", Toast.LENGTH_SHORT).show()
         answerInput.text?.clear()
         generateMathChallenge()
     }
@@ -356,10 +659,12 @@ class AlarmRingingActivity : Activity() {
 
     private fun randomQuote(): String {
         val quotes = listOf(
-            "Rise up and keep moving. Small steps count.",
-            "Today is a gift. Use it with purpose.",
-            "Discipline beats motivation when the alarm rings.",
-            "Start strong. Your future self will thank you.",
+            "💪 Levez-vous et continuez d'avancer. Les petits pas comptent.",
+            "🎁 Aujourd'hui est un cadeau. Utilisez-le avec intention.",
+            "⚡ La discipline bat la motivation quand l'alarme sonne.",
+            "🌟 Commencez fort. Votre futur vous remerciera.",
+            "☀️ Chaque matin est une nouvelle opportunité.",
+            "🚀 Le succès commence par se lever à l'heure.",
         )
         return quotes.random()
     }
