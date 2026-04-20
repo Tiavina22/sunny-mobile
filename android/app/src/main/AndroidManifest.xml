@@ -37,7 +37,7 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:excludeFromRecents="true"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
 
         <receiver
             android:name=".AlarmReceiver"

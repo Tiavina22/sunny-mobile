@@ -8,15 +8,27 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
+import kotlin.random.Random
 
 class AlarmRingingActivity : Activity() {
     private val ringtone by lazy {
         RingtoneManager.getRingtone(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
     }
     private var vibrator: Vibrator? = null
+
+    private var expectedAnswer: Int = 0
+
+    private lateinit var challengeTextView: TextView
+    private lateinit var answerInput: EditText
+    private lateinit var validateButton: Button
+
+    private lateinit var challengeType: String
+    private lateinit var difficulty: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,10 +45,25 @@ class AlarmRingingActivity : Activity() {
             )
         }
 
-        val challengeType = intent.getStringExtra("challengeType") ?: "math"
-        val difficulty = intent.getStringExtra("difficulty") ?: "easy"
+        challengeType = intent.getStringExtra("challengeType") ?: "math"
+        difficulty = intent.getStringExtra("difficulty") ?: "easy"
 
         title = "Alarm"
+
+        challengeTextView = TextView(this).apply {
+            textSize = 22f
+        }
+        answerInput = EditText(this).apply {
+            textSize = 22f
+            hint = "Enter result"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
+        }
+        validateButton = Button(this).apply {
+            text = "Validate"
+            setOnClickListener { validateMathAnswer() }
+        }
+
         setContentView(
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -52,32 +79,23 @@ class AlarmRingingActivity : Activity() {
                 addView(
                     TextView(context).apply {
                         textSize = 18f
-                        text = "Challenge: $challengeType  Difficulty: $difficulty"
+                        text = "Challenge: $challengeType | Difficulty: $difficulty"
                     },
                 )
 
-                addView(
-                    Button(context).apply {
-                        text = "Open challenge"
-                        setOnClickListener {
-                            // Placeholder for the dedicated challenge screen.
-                        }
-                    },
-                )
-
-                addView(
-                    Button(context).apply {
-                        text = "Stop (temporary for dev)"
-                        setOnClickListener {
-                            stopAlertSignals()
-                            finish()
-                        }
-                    },
-                )
+                addView(challengeTextView)
+                addView(answerInput)
+                addView(validateButton)
             },
         )
 
+        configureChallengeUi()
         startAlertSignals()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        // Keep the ringing screen active until challenge flow resolves.
     }
 
     override fun onDestroy() {
@@ -107,5 +125,70 @@ class AlarmRingingActivity : Activity() {
             ringtone.stop()
         }
         vibrator?.cancel()
+    }
+
+    private fun configureChallengeUi() {
+        if (challengeType != "math") {
+            challengeTextView.text = "This challenge is not implemented yet."
+            answerInput.hint = "Tap validate to stop (temporary)"
+            validateButton.text = "Stop"
+            validateButton.setOnClickListener {
+                stopAlertSignals()
+                finish()
+            }
+            return
+        }
+
+        generateMathChallenge()
+    }
+
+    private fun generateMathChallenge() {
+        val useAddition = Random.nextBoolean()
+        val (a, b) = when (difficulty) {
+            "medium" -> if (useAddition) {
+                Pair(Random.nextInt(10, 51), Random.nextInt(10, 51))
+            } else {
+                Pair(Random.nextInt(2, 13), Random.nextInt(2, 13))
+            }
+
+            "hard" -> if (useAddition) {
+                Pair(Random.nextInt(20, 100), Random.nextInt(20, 100))
+            } else {
+                Pair(Random.nextInt(6, 21), Random.nextInt(6, 21))
+            }
+
+            else -> if (useAddition) {
+                Pair(Random.nextInt(1, 10), Random.nextInt(1, 10))
+            } else {
+                Pair(Random.nextInt(1, 6), Random.nextInt(1, 6))
+            }
+        }
+
+        if (useAddition) {
+            expectedAnswer = a + b
+            challengeTextView.text = "Solve: $a + $b"
+        } else {
+            expectedAnswer = a * b
+            challengeTextView.text = "Solve: $a x $b"
+        }
+    }
+
+    private fun validateMathAnswer() {
+        if (challengeType != "math") {
+            stopAlertSignals()
+            finish()
+            return
+        }
+
+        val userAnswer = answerInput.text.toString().trim().toIntOrNull()
+        if (userAnswer == expectedAnswer) {
+            stopAlertSignals()
+            finish()
+            return
+        }
+
+        Toast.makeText(this, "Wrong answer. Try again.", Toast.LENGTH_SHORT).show()
+        answerInput.text?.clear()
+        generateMathChallenge()
     }
 }
